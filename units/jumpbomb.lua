@@ -21,7 +21,7 @@ return { jumpbomb = {
 
   customParams           = {
     canjump          = 1,
-    jump_range       = 400,
+    jump_range       = 9000,
     jump_height      = 120,
     jump_speed       = 6,
     jump_reload      = 10,
@@ -85,7 +85,7 @@ return { jumpbomb = {
   },
   weaponDefs = {
     jumpbomb_DEATH = {
-      areaOfEffect       = 180,
+      areaOfEffect       = 90000,
       craterBoost        = 4,
       craterMult         = 5,
       edgeEffectiveness  = 0.3,
@@ -102,7 +102,7 @@ return { jumpbomb = {
         lups_explodelife = 1.5,
       },
       damage = {
-        default          = 8002.4,
+        default          = 80000,
       },
     },
   }
