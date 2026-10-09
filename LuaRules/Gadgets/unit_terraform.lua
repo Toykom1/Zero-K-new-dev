@@ -427,7 +427,7 @@ local function SetupPointStructure(point, structArea, segArea)
 	local x, z = point.x, point.z
 	if (structArea[x] and structArea[x][z]) or (GG.map_AllowPositionTerraform and not GG.map_AllowPositionTerraform(x, z)) then
 		point.diffHeight = 0.0001
-		point.structure = structArea[x][z] or 1000
+		point.structure = (structArea and structArea[x] and structArea[x][z]) or 1000
 	else
 		point.diffHeight = point.aimHeight - currHeight
 		segArea[x][z] = {orHeight = point.orHeight, diffHeight = point.diffHeight, building = false}
@@ -3834,6 +3834,9 @@ function gadget:UnitCreated(unitID, unitDefID, teamID)
 	if unitDefID == terraunitDefID then
 		terraUnits[unitID] = true
 		Spring.UnitRendering.SetUnitLuaDraw(unitID, true)
+		if Spring.SetUnitIconDraw then
+			Spring.SetUnitIconDraw(unitID, false)
+		end
 	end
 end
 

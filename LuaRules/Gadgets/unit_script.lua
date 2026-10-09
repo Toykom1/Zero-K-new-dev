@@ -125,6 +125,7 @@ local sp_SetUnitShieldState = Spring.SetUnitShieldState
 local sp_CallAsUnit  = Spring.UnitScript.CallAsUnit
 local sp_WaitForMove = Spring.UnitScript.WaitForMove
 local sp_WaitForTurn = Spring.UnitScript.WaitForTurn
+local sp_WaitForScale = Spring.UnitScript.WaitForScale
 local sp_SetPieceVisibility = Spring.UnitScript.SetPieceVisibility
 local sp_SetDeathScriptFinished = Spring.UnitScript.SetDeathScriptFinished
 local sp_Turn = Spring.UnitScript.Turn
@@ -166,6 +167,7 @@ Format: {
 		env = {},  -- the unit's environment table
 		waitingForMove = { [piece*3+axis] = thread, ... },
 		waitingForTurn = { [piece*3+axis] = thread, ... },
+		waitingForScale = { [piece] = thread, ... },
 		threads = {
 			[thread] = {
 				thread = thread,      -- the coroutine object
@@ -332,6 +334,21 @@ local function TurnFinished(piece, axis)
 	return AnimFinished(activeAnim, piece, axis)
 end
 
+local function ScaleFinished(piece)
+	-- Scale is scalar and always works on all axes.
+	local activeAnim = GetActiveUnit().waitingForScale
+	local wthreads = activeAnim[piece]
+	if wthreads then
+		activeAnim[piece] = nil
+
+		while (#wthreads > 0) do
+			local wthread = wthreads[#wthreads]
+			wthreads[#wthreads] = nil
+			WakeUp(wthread)
+		end
+	end
+end
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -399,6 +416,27 @@ function Spring.UnitScript.WaitForTurn(piece, axis)
 	if sp_WaitForTurn(piece, axis) then
 		return WaitForAnim(activeUnit.threads, activeUnit.waitingForTurn, piece, axis)
 	end
+end
+
+function Spring.UnitScript.WaitForScale(piece)
+	if not sp_WaitForScale(piece) then
+		return
+	end
+
+	local activeUnit = GetActiveUnit()
+	local waitForScale = activeUnit.waitingForScale
+
+	local wthreads = waitForScale[piece]
+	if not wthreads then
+		wthreads = {}
+		waitForScale[piece] = wthreads
+	end
+
+	local thread = activeUnit.threads[co_running() or error("not in a thread", 2)]
+	wthreads[#wthreads+1] = thread
+	thread.container = wthreads
+
+	co_yield()
 end
 
 function Spring.UnitScript.Turn(piece, axis, targetRot, speed)
@@ -583,8 +621,11 @@ local function LoadChunk(filename)
 		return nil
 	end
 
-	-- pre-process constants (for example "math.rad(180)" -> "3.1415")
-	-- to avoid tons of needless global dereferences, function calls etc
+	-- Pre-process constants (for example "math.rad(180)" -> "3.1415")
+	-- to avoid tons of needless global dereferences, function calls etc.
+	-- Caveats:
+	-- * does not handle `math.rad = function() return 4 end` style overrides
+	-- * makes some invalid code like `12math.rad(34)56` compile
 	text = text:gsub("math%.pi", math.pi)
 	text = text:gsub("math%.tau", math.tau)
 	text = text:gsub("([xyz])_axis", { x = 1, y = 2, z = 3 })
@@ -872,6 +913,7 @@ function gadget:UnitCreated(unitID, unitDefID)
 	-- Add framework callins.
 	callins.MoveFinished = MoveFinished
 	callins.TurnFinished = TurnFinished
+	callins.ScaleFinished = ScaleFinished
 	callins.Destroy = Destroy
 
 	-- AimWeapon/AimShield is required for a functional weapon/shield,
@@ -947,6 +989,7 @@ function gadget:UnitCreated(unitID, unitDefID)
 		unitID = unitID,
 		waitingForMove = {},
 		waitingForTurn = {},
+		waitingForScale = {},
 		threads = setmetatable({}, {__mode = "kv"}), -- weak table
 		pieceRotSpeeds = pieceRotSpeeds,
 		pieceRotTargets = pieceRotTargets,

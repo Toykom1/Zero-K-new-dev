@@ -17,7 +17,7 @@ function widget:GetInfo()
 		author    = "jK",
 		date      = "2009", --2013 May 12
 		license   = "GNU GPL, v2 or later",
-		layer     = -10, -- above gui_selectedunits_gl4, below gui_name_tags 
+		layer     = -11, -- above gui_selectedunits_gl4, below gui_name_tags 
 		enabled   = true  --  loaded by default?
 	}
 end
@@ -119,7 +119,10 @@ local function OptionsChanged()
 	drawBarPercentages = options.drawBarPercentages.value
 	barScale = options.barScale.value
 	debugMode = options.debugMode.value
-	
+
+
+	barWidth = options.barWidth.value
+	barHeight = options.barHeight.value
 	healthbarDistSq    = options.unitMaxHeight.value*options.unitMaxHeight.value
 	healthbarPercentSq = options.unitPercentHeight.value*options.unitPercentHeight.value
 	healthbarTitleSq   = options.unitTitleHeight.value*options.unitTitleHeight.value
@@ -131,7 +134,7 @@ end
 
 options_path = 'Settings/Interface/Healthbars'
 options_order = { 'showhealthbars', 'drawFeatureHealth', 'drawBarPercentages', 'flashJump', 'showEnemyStatus',
-	'barScale', 'debugMode', 'minReloadTime',
+	'barScale','barWidth','barHeight','debugMode', 'minReloadTime',
 	'unitMaxHeight', 'unitPercentHeight', 'unitTitleHeight',
 	'featureMaxHeight', 'featurePercentHeight', 'featureTitleHeight',
 	'invert_shield', 'invert_health', 'invert_building', 'invert_morph',
@@ -141,6 +144,7 @@ options_order = { 'showhealthbars', 'drawFeatureHealth', 'drawBarPercentages', '
 	'invert_slow', 'invert_goo', 'invert_jump', 'invert_jump_charge', 'invert_reclaim', 'invert_resurrect',
 }
 options = {
+
 	showhealthbars = {
 		name = 'Show Healthbars',
 		type = 'bool',
@@ -183,6 +187,24 @@ options = {
 		min = 0.5,
 		max = 6,
 		step = 0.25,
+		OnChange = OptionsChanged,
+	},
+	barWidth = {
+		name = 'Bar width',
+		type = 'number',
+		value = 14,
+		min  = 2.5,
+		step = 0.25,
+		max = 30,
+		OnChange = OptionsChanged,
+	},	
+	barHeight = {
+		name = 'Bar Height',
+		type = 'number',
+		value= 3,
+		min  = 1,
+		step = 0.1,
+		max = 5,
 		OnChange = OptionsChanged,
 	},
 	minReloadTime = {
@@ -1069,7 +1091,7 @@ do
 		
 		--// REAMMO
 		if ci.canReammo then
-			local reammoProgress = GetUnitRulesParam(unitID, "reammoProgress")
+			local reammoProgress = GetUnitRulesParam(unitID, "ammoFraction") or GetUnitRulesParam(unitID, "reammoProgress")
 			if reammoProgress then
 				barDrawer.AddPercentBar("reammo", reammoProgress)
 			end
@@ -1516,7 +1538,9 @@ do
 
 		glDepthMask(false)
 
-		DrawOverlays()
+		if not WG.DrawParalyzedUnitGL4 then
+			DrawOverlays()
+		end
 		glMultiTexCoord(1, 1, 1, 1)
 		glColor(1, 1, 1, 1)
 
